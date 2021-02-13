@@ -38,7 +38,7 @@ describe("Commune contract", function () {
 		it("correctly sets asset", async function(){
 			Commune.createCommune("", ERC20Token.address, false, true, true)
 			
-			const asset = await Commune.communeAsset(communeNumber)
+			const asset = await communeAsset(communeNumber)
 			expect(asset).to.equal(ERC20Token.address)
 		})
 
@@ -52,50 +52,44 @@ describe("Commune contract", function () {
 		it("creates with no commune members", async function () {		  
 		  await Commune.createCommune("", ERC20Token.address, false, true, true)
 
-	      const members = await Commune.communeMemberCount(communeNumber);
+	      const members = await communeMemberCount(communeNumber)
 	      expect(members).to.equal(0);
 		});
 
 		it("correctly sets allowsJoining", async function () {
 			await Commune.createCommune("", ERC20Token.address, false, true, true)
 
-			const allowsJoining = await Commune.allowsJoining(communeNumber)
+			const allowsJoining = await communeAllowsJoining(communeNumber)
 			expect(allowsJoining).to.equal(false)
 		});
 
 		it("emits URI and stores it", async function(){
 			await expect(
-				Commune.createCommune("my/uri", ERC20Token.address, true, true, true)
+				Commune.createCommune("my/uri", ERC20Token.address, false, true, true)
 				).to.emit(Commune, "URI").withArgs("my/uri", communeNumber)
 			const uri = await Commune.uri(communeNumber)
 			expect(uri).to.equal("my/uri")
 			
 		})
 
-		it("does not emit or store URI if URI not set", async function(){
-			await expect(
-				Commune.createCommune("", ERC20Token.address, true, true, true)
-				).not.to.emit(Commune, "URI")
-		})
-
 		it("correctly sets allowsOutsideContribution", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, false)
+			await Commune.createCommune("", ERC20Token.address, false, true, false)
 			
-			const allowsOutsideContribution = await Commune.allowsOutsideContribution(communeNumber)
+			const allowsOutsideContribution = await communeAllowsOutsideContribution(communeNumber)
 			expect(allowsOutsideContribution).to.equal(false)
 		});
 
 		it("correctly sets allowsRemoving", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, false, true, true)
 			
-			const allowsRemoving = await Commune.allowsOutsideContribution(communeNumber)
+			const allowsRemoving = await communeAllowsRemoving(communeNumber)
 			expect(allowsRemoving).to.equal(true)
 		});
 	});
 
 	describe("contribute", function () {
 		it("does not allow contribution from non member if otutside contributions not allowed", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, false)
+			await Commune.createCommune("", ERC20Token.address, false, true, false)
 
 			const amount = BigInt(Math.pow(10,18));
 
@@ -115,7 +109,7 @@ describe("Commune contract", function () {
 
 
 		it("adds to contract address' ERC20 balance", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr2).joinCommune(communeNumber)
 
 			const amount = BigInt(Math.pow(10,18))
@@ -130,7 +124,7 @@ describe("Commune contract", function () {
 		});
 
 		it("increases commune's prorated total", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr2).joinCommune(communeNumber)
 
 			const amount = BigInt(Math.pow(10,18));
@@ -140,12 +134,12 @@ describe("Commune contract", function () {
 
 			await Commune.connect(addr1).contribute(amount, communeNumber)
 
-			const proratedTotal = await Commune.communeProratedTotal(communeNumber)
+			const proratedTotal = await communeProratedTotal(communeNumber)
 			expect(proratedTotal).to.equal(amountToMembers)
 		});
 
 		it("increases dev fund's ERC20 balance", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr2).joinCommune(communeNumber)
 
 			const amount = BigInt(Math.pow(10,18));
@@ -164,7 +158,7 @@ describe("Commune contract", function () {
 		});
 
 		it("emits contribute", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr2).joinCommune(communeNumber)
 
 			const amount = BigInt(Math.pow(10,18));
@@ -179,7 +173,7 @@ describe("Commune contract", function () {
 
 	describe("balanceOf", function () {
 		it("returns the correct balance after no contribution", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 
 			const balance = await Commune.balanceOf(addr1.address, communeNumber)
@@ -187,7 +181,7 @@ describe("Commune contract", function () {
 		});
 
 		it("returns the correct balance after one contribution", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 
 			const amount = BigInt(Math.pow(10,18))
@@ -202,7 +196,7 @@ describe("Commune contract", function () {
 		});
 
 		it("returns the correct balance after two contributions", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 
 			const amount = Math.pow(10,18);
@@ -222,7 +216,7 @@ describe("Commune contract", function () {
 		});
 
 		it("returns the correct balance after a withdraw", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 
 			const amount = BigInt(Math.pow(10,18));
@@ -245,7 +239,7 @@ describe("Commune contract", function () {
 		});
 
 		it("returns 0 if address is not in commune", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr2).joinCommune(communeNumber)
 
 			const amount = BigInt(Math.pow(10,18));
@@ -262,7 +256,7 @@ describe("Commune contract", function () {
 	// TODO: balancOfBatch
 	describe("balanceOfBatch", function () {
 		it("returns the correct balance when given one address/commune", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 
 			const amount = BigInt(Math.pow(10,18))
@@ -278,7 +272,7 @@ describe("Commune contract", function () {
 		});
 
 		it("returns the correct balance when given two address/commune", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 			await Commune.connect(addr2).joinCommune(communeNumber)
 
@@ -304,7 +298,7 @@ describe("Commune contract", function () {
 		});
 
 		it("returns 0 if not a member of commune", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr2).joinCommune(communeNumber)
 			
 			const amount = BigInt(Math.pow(10,18))
@@ -331,7 +325,7 @@ describe("Commune contract", function () {
 			const amount = BigInt(Math.pow(10,18));
 			const tooBigAmount = BigInt(Math.pow(10,19));
 
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 
 			ERC20Token.connect(addr1).approve(Commune.address, amount)
@@ -346,7 +340,7 @@ describe("Commune contract", function () {
 			const amount = BigInt(Math.pow(10,18));
 			const amountToSend = BigInt(Math.pow(10,5));
 
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 
 			ERC20Token.connect(addr1).approve(Commune.address, amount)
@@ -363,7 +357,7 @@ describe("Commune contract", function () {
 			const amountToMembers = await amountAfterFee(amount)
 			const amountToSend = BigInt(Math.pow(10,5));
 
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 
 			ERC20Token.connect(addr1).approve(Commune.address, amount)
@@ -380,7 +374,7 @@ describe("Commune contract", function () {
 			const amountToMembers = await amountAfterFee(amount)
 			const amountToSend = BigInt(Math.pow(10,5));
 
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 
 			ERC20Token.connect(addr1).approve(Commune.address, amount)
@@ -404,7 +398,7 @@ describe("Commune contract", function () {
 			const amount = BigInt(Math.pow(10,18));
 			const tooBigAmount = BigInt(Math.pow(10,19));
 
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 
 			ERC20Token.connect(addr1).approve(Commune.address, amount)
@@ -419,7 +413,7 @@ describe("Commune contract", function () {
 			const amount = BigInt(Math.pow(10,18));
 			const amountToSend = BigInt(Math.pow(10,4));
 
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 
 			ERC20Token.connect(addr1).approve(Commune.address, amount)
@@ -436,7 +430,7 @@ describe("Commune contract", function () {
 			const amountToMembers = await amountAfterFee(amount)
 			const amountToSend = BigInt(Math.pow(10,5));
 
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 
 			ERC20Token.connect(addr1).approve(Commune.address, amount)
@@ -453,7 +447,7 @@ describe("Commune contract", function () {
 			const amountToMembers = await amountAfterFee(amount)
 			const amountToSend = BigInt(Math.pow(10,5));
 
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).joinCommune(communeNumber)
 
 			ERC20Token.connect(addr1).approve(Commune.address, amount)
@@ -475,7 +469,7 @@ describe("Commune contract", function () {
 		});
 
 		it("does allow outsider to join if join allowed", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 
 			await expect(
 				Commune.connect(addr2).joinCommune(communeNumber)
@@ -483,7 +477,7 @@ describe("Commune contract", function () {
 		});
 
 		it("emits AddCommuneMember event", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 
 			await expect(
 				Commune.connect(addr2).joinCommune(communeNumber)
@@ -491,19 +485,19 @@ describe("Commune contract", function () {
 		});
 
 		it("adds member to commune", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr2).joinCommune(communeNumber)
 			
 			// check that member is added to commune
 			const isMember = await Commune.isCommuneMember(communeNumber, addr2.address)
 			expect(isMember).to.equal(true)
 
-			const members = await Commune.communeMemberCount(communeNumber);
+			const members = await communeMemberCount(communeNumber);
 	      	expect(members).to.equal(1);
 		});
 
 		it("reverts if account already in commune", async function () {
-			await Commune.createCommune("", ERC20Token.address, true, true, true)
+			await Commune.createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr2).joinCommune(communeNumber)
 
 			await expect(
@@ -515,40 +509,40 @@ describe("Commune contract", function () {
 
 	describe("addCommuneMember", function () {
 		it("adds member to commune", async function () {
-			await Commune.connect(addr1).createCommune("", ERC20Token.address, true, true, true)
+			await Commune.connect(addr1).createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr1).addCommuneMember(addr2.address, communeNumber)
 			
 			// check that member is added to commune
 			const isMember = await Commune.isCommuneMember(communeNumber, addr2.address)
 			expect(isMember).to.equal(true)
 
-			const members = await Commune.communeMemberCount(communeNumber);
+			const members = await communeMemberCount(communeNumber);
 	      	expect(members).to.equal(1);
 		});
 	});
 
 	describe("leaveCommune", function () {
 		it("reverts if not in commune", async function() {
-			await Commune.connect(addr1).createCommune("", ERC20Token.address, true, true, true)
+			await Commune.connect(addr1).createCommune("", ERC20Token.address, false, true, true)
 			await expect(
 				Commune.connect(addr2).leaveCommune(communeNumber)
 				).to.be.revertedWith("Commune: account is not in commune")
 		});
 
 		it("removes commune member", async function () {
-			await Commune.connect(addr1).createCommune("", ERC20Token.address, true, true, true)
+			await Commune.connect(addr1).createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr2).joinCommune(communeNumber)
 			await Commune.connect(addr2).leaveCommune(communeNumber)
 
 			const isCommuneMember = await Commune.isCommuneMember(communeNumber, addr1.address)
 			expect(isCommuneMember).to.equal(false)
 
-			const memberCount = await Commune.communeMemberCount(communeNumber)
+			const memberCount = await communeMemberCount(communeNumber);
 			expect(memberCount).to.equal(0)
 		});
 
 		it("emits", async function () {
-			await Commune.connect(addr1).createCommune("", ERC20Token.address, true, true, true)
+			await Commune.connect(addr1).createCommune("", ERC20Token.address, true, false, true)
 			await Commune.connect(addr2).joinCommune(communeNumber)
 			await expect(
 				 Commune.connect(addr2).leaveCommune(communeNumber)
@@ -559,7 +553,7 @@ describe("Commune contract", function () {
 
 	describe("removeFromCommune", function () {
 		it("only can be called by controller", async function () {
-			await Commune.connect(addr1).createCommune("", ERC20Token.address, true, true, true)
+			await Commune.connect(addr1).createCommune("", ERC20Token.address, false, true, true)
 			await expect(
 				 Commune.connect(addr2).removeCommuneMember(addr1.address, communeNumber)
 				).to.be.revertedWith("Commune: only the commune controller can do this")
@@ -567,29 +561,29 @@ describe("Commune contract", function () {
 
 		it("reverts if removing not allowed for commune", async function () {
 			await Commune.connect(addr1).createCommune("", ERC20Token.address, true, false, true)
-			await Commune.connect(addr2).joinCommune(communeNumber)
+			await Commune.connect(addr1).addCommuneMember(addr2.address, communeNumber)
 			await expect(
 				 Commune.connect(addr1).removeCommuneMember(addr2.address, communeNumber)
 				).to.be.revertedWith("Commune: commune does not allow removing")
 		});
 
 		it("removes commune member", async function () {
-			await Commune.connect(addr1).createCommune("", ERC20Token.address, true, true, true)
-			await Commune.connect(addr2).joinCommune(communeNumber)
+			await Commune.connect(addr1).createCommune("", ERC20Token.address, false, true, true)
+			await Commune.connect(addr1).addCommuneMember(addr2.address, communeNumber)
 
 			Commune.connect(addr1).removeCommuneMember(addr2.address, communeNumber)
 
 			const isCommuneMember = await Commune.isCommuneMember(communeNumber, addr1.address)
 			expect(isCommuneMember).to.equal(false)
 
-			const memberCount = await Commune.communeMemberCount(communeNumber)
+			const memberCount = await communeMemberCount(communeNumber);
 			expect(memberCount).to.equal(0)
 				
 		});
 
 		it("emits", async function () {
-			await Commune.connect(addr1).createCommune("", ERC20Token.address, true, true, true)
-			await Commune.connect(addr2).joinCommune(communeNumber)
+			await Commune.connect(addr1).createCommune("", ERC20Token.address, false, true, true)
+			await Commune.connect(addr1).addCommuneMember(addr2.address, communeNumber)
 			await expect(
 				Commune.connect(addr1).removeCommuneMember(addr2.address, communeNumber)
 				).to.emit(Commune, "RemoveCommuneMember").withArgs(addr2.address, communeNumber)
@@ -607,6 +601,36 @@ describe("Commune contract", function () {
 		feeRate = await Commune.feeRate()
 		fee = (amount * BigInt(feeRate)) / BigInt(10000)
 		return amount - fee
+	}
+
+	async function communeAllowsJoining(communeID) {
+		const data = await Commune.getCommune(communeID)
+		return data[0]
+	}
+
+	async function communeAllowsRemoving(communeID) {
+		const data = await Commune.getCommune(communeID)
+		return data[1]
 	}	
+
+	async function communeAllowsOutsideContribution(communeID) {
+		const data = await Commune.getCommune(communeID)
+		return data[2]
+	}		
+
+	async function communeAsset(communeID) {
+		const data = await Commune.getCommune(communeID)
+		return data[3]
+	}	
+
+	async function communeProratedTotal(communeID) {
+		const data = await Commune.getCommune(communeID)
+		return data[4]
+	}
+
+	async function communeMemberCount(communeID) {
+		const data = await Commune.getCommune(communeID)
+		return data[5]
+	}
 
 });

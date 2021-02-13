@@ -2,15 +2,19 @@ pragma solidity ^0.7.0;
 
 interface ICommune {
 
+	struct aCommune {
+        bool allowsJoining;
+        bool allowsRemoving;
+        bool allowsOutsideContribution;
+        address asset;
+        uint256 proratedTotal;
+        uint256 memberCount;
+        address controller;
+        string uri;
+    }
+
 	function numberOfCommunes() external view returns (uint256);
 	function isCommuneMember(uint256 commune, address account) external view returns (bool);
-	function communeMemberCount(uint256 commune) external view returns (uint256);
-	function communeProratedTotal(uint256 commune) external view returns (uint256);
-	function allowsJoining(uint256 commune) external view returns (bool);
-	function allowsRemoving(uint256 commune) external view returns (bool);
-	function allowsOutsideContribution(uint256 commune) external view returns (bool);
-	function communeAsset(uint256 commune) external view returns (address);
-	function communeController(uint256 commune) external view returns (address);
 	function feeRate() external view returns (uint256);
 	function treasuryAddress() external view returns (address);
 	function controller() external view returns (address);
@@ -27,6 +31,7 @@ interface ICommune {
 	function withdrawBatch(address account, address to, uint256[] memory communes, uint256[] memory amounts) external;
 
 	function updateCommuneController(address account, uint256 commune) external;
+	function updateCommuneURI(string memory _uri, uint256 commune) external;
 	function updateController(address account) external;
 	function updateFee(uint256 rate) external;
 	function setTreasuryAddress(address newTreasury) external;

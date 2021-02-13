@@ -8,19 +8,9 @@ import './interfaces/ICommune.sol';
 contract Commune is ICommune {
     using SafeMath for uint256;
 
-    struct aCommune {
-        bool allowsJoining;
-        bool allowsRemoving;
-        bool allowsOutsideContribution;
-        address asset;
-        uint256 proratedTotal;
-        uint256 memberCount;
-        address controller;
-        string uri;
-    }
+    // maybe just make this public, instead of all the getters
+    mapping (uint256 => aCommune) public getCommune;
 
-    // maybe just make this public, instead of all the getters?
-    mapping (uint256 => aCommune) private _communes;
 
     // maybe we should rather use 
     // mapping (address => EnumerableSet.UintSet) private _holderTokens;
@@ -36,50 +26,24 @@ contract Commune is ICommune {
     // in basis points, 0 through 500, i.e. max take 5%
     uint256 private _feeRate = 100;
 
+    // where fee goes to
     address private _treasuryAddress;
 
     // for creating new commune IDs
-    uint256 private _nonce = 0;
+    uint256 private _nonce;
 
     // can update treasury address and fee rate 
     address private _controllerAddress;
 
 
     // Getters /// 
+
     function numberOfCommunes() external override view returns (uint256){
         return _nonce;
     }
 
     function isCommuneMember(uint256 commune, address account) external communeExists(commune) override view returns (bool){
         return _isCommuneMember[commune][account];
-    }
-
-    function communeMemberCount(uint256 commune) external communeExists(commune) override view returns (uint256){
-        return _communes[commune].memberCount;
-    }
-
-    function communeProratedTotal(uint256 commune) external communeExists(commune) override view returns (uint256) {
-        return _communes[commune].proratedTotal;
-    }
-
-    function allowsJoining(uint256 commune) external communeExists(commune) override view returns (bool) {
-        return _communes[commune].allowsJoining;
-    }
-
-    function allowsRemoving(uint256 commune) external communeExists(commune) override view returns (bool) {
-        return _communes[commune].allowsRemoving;
-    }
-
-    function allowsOutsideContribution(uint256 commune) external communeExists(commune) override view returns (bool) {
-        return _communes[commune].allowsOutsideContribution;
-    }
-
-    function communeAsset(uint256 commune) external communeExists(commune) override view returns (address) {
-        return _communes[commune].asset;
-    }
-
-    function communeController(uint256 commune) external communeExists(commune) override view returns (address) {
-        return _communes[commune].controller;
     }
 
     function feeRate() external override view returns (uint256){
@@ -102,7 +66,7 @@ contract Commune is ICommune {
     }
 
     modifier communeControllerOnly(uint256 commune){
-        require(_communes[commune].controller == msg.sender, "Commune: only the commune controller can do this");
+        require(getCommune[commune].controller == msg.sender, "Commune: only the commune controller can do this");
         _;
     }
 
@@ -111,22 +75,11 @@ contract Commune is ICommune {
         _;
     }
 
-    modifier accountInCommune(address account, uint256 commune){
-        require(_isCommuneMember[commune][account], "Commune: account is not in commune");
-        _;
-    }
-
-    modifier accountNotInCommune(address account, uint256 commune){
-        require(!_isCommuneMember[commune][account], "Commune: account is already in commune");
-        _;
-    }
-
-
     function contribute(uint256 amount, uint256 commune) external communeExists(commune) override { 
-        require(_isCommuneMember[commune][msg.sender] || _communes[commune].allowsOutsideContribution, "Must be a member to contribute");
-        require(_communes[commune].memberCount > 0, "commune has no members, cannot accept contributions");
+        require(_isCommuneMember[commune][msg.sender] || getCommune[commune].allowsOutsideContribution, "Commune: Must be a member to contribute");
+        require(getCommune[commune].memberCount > 0, "Commune: commune has no members, cannot accept contributions");
 
-        address assetAddress = _communes[commune].asset;
+        address assetAddress = getCommune[commune].asset;
         IERC20 asset = IERC20(assetAddress);
 
         uint256 fee = amount
@@ -135,36 +88,41 @@ contract Commune is ICommune {
         
         uint256 amountToCommune = amount
             .sub(fee)
-            .div(_communes[commune].memberCount);
+            .div(getCommune[commune].memberCount);
 
         asset.transferFrom(msg.sender, address(this), amountToCommune);
         asset.transferFrom(msg.sender, _treasuryAddress, fee);
 
-        _communes[commune].proratedTotal = _communes[commune].proratedTotal.add(amountToCommune);
+        getCommune[commune].proratedTotal = getCommune[commune].proratedTotal.add(amountToCommune);
 
         emit Contribute(msg.sender, commune, amount);
     }
 
-
+    /**
+        @dev _uri should link to a JSON file of the form 
+        {
+            "title": "Commune Title",
+            "description": "Commune description"
+        }
+    */
     function createCommune(string memory _uri, address asset, bool allowJoining, bool allowRemoving, bool allowOutsideContribution) external override returns(uint256 _id) {  
+        require((!allowJoining && allowRemoving) || (allowJoining && !allowRemoving), "Commune: cannot both allow joining and removing");
+
         _id = ++_nonce;
 
-        _communes[_id].controller = msg.sender;
-        _communes[_id].allowsJoining = allowJoining;
-        _communes[_id].allowsRemoving = allowRemoving;
-        _communes[_id].allowsOutsideContribution = allowOutsideContribution;
-        _communes[_id].asset = asset;
+        getCommune[_id].controller = msg.sender;
+        getCommune[_id].allowsJoining = allowJoining;
+        getCommune[_id].allowsRemoving = allowRemoving;
+        getCommune[_id].allowsOutsideContribution = allowOutsideContribution;
+        getCommune[_id].asset = asset;
+        getCommune[_id].uri = _uri;
 
-        if (bytes(_uri).length > 0) {
-            // debating only using emit/event log
-            _communes[_id].uri = _uri;
-            emit URI(_uri, _id);
-        }
+        emit URI(_uri, _id);
     }
 
     //Join/Add Functions
     function joinCommune(uint256 commune) external override {
-        require(_communes[commune].allowsJoining, "Commune: commune does not allow joining");
+        require(getCommune[commune].allowsJoining, "Commune: commune does not allow joining");
         _addCommuneMember(msg.sender, commune);
     }
 
@@ -172,10 +130,12 @@ contract Commune is ICommune {
         _addCommuneMember(account, commune);
     }
 
-    function _addCommuneMember(address account, uint256 commune) private communeExists(commune) accountNotInCommune(account, commune) {
+    function _addCommuneMember(address account, uint256 commune) private communeExists(commune) {
+        require(!_isCommuneMember[commune][account], "Commune: account is already in commune");
+
         _isCommuneMember[commune][account] = true;
-        ++_communes[commune].memberCount;
-        _balanceAtJoin[commune][account] = _communes[commune].proratedTotal;
+        ++getCommune[commune].memberCount;
+        _balanceAtJoin[commune][account] = getCommune[commune].proratedTotal;
 
         emit AddCommuneMember(account, commune);
     }
@@ -187,16 +147,16 @@ contract Commune is ICommune {
     }
 
     function removeCommuneMember(address account, uint256 commune) external communeControllerOnly(commune) override {
-        require(_communes[commune].allowsRemoving, "Commune: commune does not allow removing");
+        require(getCommune[commune].allowsRemoving, "Commune: commune does not allow removing");
 
         _removeCommuneMember(account, commune);
     }
 
-    function _removeCommuneMember(address account, uint256 commune) private communeExists(commune) accountInCommune(account, commune){
-        require(_isCommuneMember[commune][account], "Commune: address is not in commune");
+    function _removeCommuneMember(address account, uint256 commune) private communeExists(commune) {
+        require(_isCommuneMember[commune][account], "Commune: account is not in commune");
 
         _isCommuneMember[commune][account] = false;
-        _communes[commune].memberCount = _communes[commune].memberCount.sub(1);
+        getCommune[commune].memberCount = getCommune[commune].memberCount.sub(1);
         // we reset the spent balance, incase they'e added back later, to prevent a negative number 
          _spentBalance[commune][account] = 0;
 
@@ -206,17 +166,24 @@ contract Commune is ICommune {
 
 
     constructor(address controller) public {
-        _setURI("to-do");
+        _setURI("your-uri-here");
 
         _controllerAddress = controller;
+        _treasuryAddress = controller;
     }
 
     /// controller functions ///
 
     function updateCommuneController(address account, uint256 commune) external communeControllerOnly(commune) override {
-        _communes[commune].controller = account;
+        getCommune[commune].controller = account;
 
         emit UpdateCommuneController(account, commune);
+    }
+
+    function updateCommuneURI(string memory _uri, uint256 commune) external communeControllerOnly(commune) override {
+        getCommune[commune].uri = _uri;
+
+        emit URI(_uri, commune);
     }
 
     function updateController(address account) external controllerOnly override {
@@ -248,7 +215,7 @@ contract Commune is ICommune {
     
     function uri(uint256 commune) communeExists(commune) external view  returns (string memory) {
 
-        string memory _communeURI = _communes[commune].uri;
+        string memory _communeURI = getCommune[commune].uri;
 
         // if the commune URI is set, return it. Note, might still need to replace `\{id\}`
         if (bytes(_communeURI).length > 0) {
@@ -268,7 +235,7 @@ contract Commune is ICommune {
         if(!_isCommuneMember[commune][account]){
             return 0;
         }
-        return _communes[commune].proratedTotal
+        return getCommune[commune].proratedTotal
             .sub(_balanceAtJoin[commune][account])
             .sub(_spentBalance[commune][account]);
     }
@@ -314,7 +281,6 @@ contract Commune is ICommune {
     }
 
     function withdraw(address account, address to, uint256 commune, uint256 amount) public override {
-        require(account != address(0), "Commune: Cannot withdraw from the zero address");
         require(to != address(0), "Commune: Cannot withdraw to the zero address");
         require(
             account == msg.sender || isApprovedForAll(account, msg.sender),
@@ -326,13 +292,12 @@ contract Commune is ICommune {
         balanceOf(account, commune).sub(amount, "Commune: withdraw amount exceeds balance");
         _spentBalance[commune][account] = _spentBalance[commune][account].add(amount);
 
-        IERC20(_communes[commune].asset).transfer(to, amount);
+        IERC20(getCommune[commune].asset).transfer(to, amount);
 
         emit Withdraw(operator, account, to, commune, amount);
     }
 
     function withdrawBatch(address account, address to, uint256[] memory communes, uint256[] memory amounts) public override {
-        require(account != address(0), "Commune: Cannot withdraw from the zero address");
         require(to != address(0), "Commune: Cannot withdraw to the zero address");
         require(
             account == msg.sender || isApprovedForAll(account, msg.sender),
@@ -344,7 +309,7 @@ contract Commune is ICommune {
         for (uint i = 0; i < communes.length; i++) {
             balanceOf(account, communes[i]).sub(amounts[i], "Commune: withdraw amount exceeds balance");
             _spentBalance[communes[i]][account] = _spentBalance[communes[i]][account].add(amounts[i]);
-            IERC20(_communes[communes[i]].asset).transfer(to, amounts[i]);
+            IERC20(getCommune[communes[i]].asset).transfer(to, amounts[i]);
         }
 
         emit WithdrawBatch(operator, account, to, communes, amounts);
