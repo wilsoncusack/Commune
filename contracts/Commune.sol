@@ -8,9 +8,18 @@ import './interfaces/ICommune.sol';
 contract Commune is ICommune {
     using SafeMath for uint256;
 
-    // maybe just make this public, instead of all the getters
-    mapping (uint256 => aCommune) public getCommune;
+    struct aCommune {
+        bool allowsJoining;
+        bool allowsRemoving;
+        bool allowsOutsideContribution;
+        address asset;
+        uint256 proratedTotal;
+        uint256 memberCount;
+        address controller;
+        string uri;
+    }
 
+    mapping (uint256 => aCommune) public getCommune;
 
     // maybe we should rather use 
     // mapping (address => EnumerableSet.UintSet) private _holderTokens;
@@ -165,11 +174,11 @@ contract Commune is ICommune {
 
 
 
-    constructor(address controller) public {
+    constructor(address _controller) {
         _setURI("your-uri-here");
 
-        _controllerAddress = controller;
-        _treasuryAddress = controller;
+        _controllerAddress = _controller;
+        _treasuryAddress = _controller;
     }
 
     /// controller functions ///

@@ -2,17 +2,6 @@ pragma solidity ^0.7.0;
 
 interface ICommune {
 
-	struct aCommune {
-        bool allowsJoining;
-        bool allowsRemoving;
-        bool allowsOutsideContribution;
-        address asset;
-        uint256 proratedTotal;
-        uint256 memberCount;
-        address controller;
-        string uri;
-    }
-
 	function numberOfCommunes() external view returns (uint256);
 	function isCommuneMember(uint256 commune, address account) external view returns (bool);
 	function feeRate() external view returns (uint256);
